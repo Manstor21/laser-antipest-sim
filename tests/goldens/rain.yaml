@@ -1,0 +1,7 @@
+# Golden: rain variant (lidar/size noise up, gates must hold).
+name: rain
+seed: 11
+counts: {total: 12, bee: 6, velutina: 6}
+perturb: {size_sigma_mm: 1.0, lidar_sigma_m: 0.015, vel_sigma_ms: 0.15}
+accept: {velutina_promoted: true, bee_promoted: false}
+replay: sim/ros2/bag_replay.py::replay_scenario('rain', seed=11)

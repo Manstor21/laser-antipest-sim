@@ -1,0 +1,26 @@
+image_size:
+- 320
+- 320
+dr_variants:
+- rain
+- glare
+- occlusion
+- clean
+sources:
+- name: vespai-protocol
+  license: CC-BY-4.0
+  n: 2100
+- name: roboflow-filtered
+  license: CC-BY-4.0
+  n: 2500
+- name: bee-vs-wasp-neg
+  license: CC-BY-4.0
+  n: 800
+- name: gazebo-synth-320
+  license: proprietary-sim
+  n: 3000
+synthetic_ratio: 0.35714285714285715
+attribution:
+- "VespAI-protocol (CC-BY-4.0) \u2014 courtesy of original authors, see manifest sources"
+- "Roboflow filtered subset (CC-BY-4.0) \u2014 courtesy of original authors"
+- "Bee-vs-Wasp negatives (CC-BY-4.0) \u2014 courtesy of original authors"

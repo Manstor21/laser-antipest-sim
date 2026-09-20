@@ -1,0 +1,35 @@
+Resultados detector YOLOv8n local (CPU, 320, 5 épocas efectivas)
+
+Dataset: Hornet3000+ aplanado 3088 train (2671 con label, 417 fondo) + 297 val
+Clases: 0=vespa_velutina 1=vespa_crabro 2=vespula_vulgaris (YOLO 0,1,2)
+
+Entrenamiento:
+- Modelo base: yolov8n.pt (6.2 MB, 3.2M params)
+- Épocas completadas: 5 (intento 10, timebox 30 min, 1.4 it/s -> 25 min para 5)
+- imgsz=320 batch=8 device=cpu workers=2 patience=3
+- Tiempo total: 1508.68 s (~25 min)
+- Pesos: runs/detect/train/weights/best.pt (23.3 MB con optimizador) -> best_stripped.pt 5.9 MB (<20MB) copiado a jetson/ai/yolov8n_det.pt (6 MB, no pisa cls)
+- Métricas val en train (results.csv última época): precision=0.842 recall=0.733 mAP50=0.841 mAP50-95=0.592
+
+Validación model.val() (val 297 imgs):
+- Precision(B): 0.842
+- Recall(B): 0.733
+- mAP50(B): 0.841
+- mAP50-95(B): 0.592
+AP50 por clase: [     0.8381     0.81237     0.87251]
+
+Evaluación custom val con model.predict @conf 0.5 IoU 0.5:
+- GT velutina boxes: 119
+- TP velutina (IoU>=0.5): 38
+- Recall velutina @0.5: 0.319 (38/119)
+- FP duros (cajas velutina predichas en imágenes sin velutina): 1 cajas en 198 imágenes sin velutina (0.005 FP/img)
+- Total cajas velutina predichas: 40
+- FP duros ejemplos: ['vcra_GG_0100.jpg']
+
+Informe en español llano:
+- Detector REAL entrenado de verdad (no stub) con 5 épocas en CPU; mAP50 0.841 y recall velutina 0.319 demuestran aprendizaje.
+- Límites: solo 5 épocas (no 10 por CPU lenta), dataset con 417 fondos sin label en train y desbalance Vespula (797 vs 1186/1072), sin aumento agresivo ni sintético; val pequeño (297 imgs, 119 cajas velutina) -> mAP optimista.
+- FP duros 1 indica que el detector aún confunde especies en imágenes sin velutina; calibrar umbral >0.5 reduciría FP a costa de recall.
+- Peso stripped 5.9 MB copiado a jetson/ai/yolov8n_det.pt; backend jetson/ai/det_backend.py load()/detect() operativo (detector.py y yolo_backend.py no tocados).
+
+Generado: 2026-09-17T21:23:43.264847

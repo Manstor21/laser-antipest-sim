@@ -1,0 +1,7 @@
+# Golden: glare variant (V+15, S-15; velutina V55/S105 still pass, bee still fails).
+name: glare
+seed: 11
+counts: {total: 12, bee: 6, velutina: 6}
+perturb: {dV: 15.0, dS: -15.0}
+accept: {velutina_promoted: true, bee_promoted: false}
+replay: sim/ros2/bag_replay.py::replay_scenario('glare', seed=11)

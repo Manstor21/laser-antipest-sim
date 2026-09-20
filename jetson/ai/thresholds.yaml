@@ -1,0 +1,12 @@
+# PR1 foundation — AI gate thresholds (doubt defaults to bee, no-fire).
+# Disabled by default: ai.enabled=false → synthetic Block-1 path.
+p_velutina_min: 0.995
+p_bee_max: 0.001
+temperature: 1.5
+vote:
+  min_frames: 3
+  min_agree: 2
+  bee_veto: true
+ai:
+  enabled: false
+roi_size_px: 320

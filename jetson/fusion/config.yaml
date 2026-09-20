@@ -1,0 +1,58 @@
+# Velutina sensor-fusion — PR1 foundation (sim-only, zero hardware).
+# All thresholds parameterized for rain/glare domain randomization.
+gates:
+  r1_size_mm:
+    min: 15
+    max: 35
+    tolerance_mm: 3
+    reject_below_mm: 12
+    reject_above_mm: 40
+  r2_velocity_ms:
+    hover_max: 0.5
+    transit_min: 1.0
+    transit_max: 11.0
+    min_frames: 3
+    max_error: 0.3
+  r3_hsv:
+    thorax_v_max: 60
+    band_h_min: 15
+    band_h_max: 45
+    band_s_min: 80
+  r4_ratio:
+    min: 1.6
+    max: 2.4
+  r5_microdoppler_hz:
+    advisory_min: 100
+    advisory_max: 170
+    gating: false  # advisory only, never blocks alone
+roi:
+  size_px: 320
+  miss_fallback_frames: 5
+sync:
+  rms_max_ms: 1.0
+  reproj_max_px_at_2m: 2.0
+  bag_seconds: 60
+fusion:
+  enabled: false
+  predict_ms: 50
+laser:
+  enabled: false  # SIMULATED default no-fire; explicit true required
+  simulated: true
+  label: SIMULATED
+  class_label: SIMULATED Class 4 (open-shutter, sim-only, no cert/SIL claim)
+ai:
+  enabled: false
+  model: yolov8s-seg
+  opset: 12
+  roi_size_px: 320
+  runtime: onnx-cpu
+  trt_deferred: true
+lidar_sim:
+  range_min_m: 0.5
+  range_max_m: 5.0
+  rate_hz: 10
+  rmse_max_mm: 50
+radar_sim:
+  rate_hz: 10
+camera_sim:
+  fps: 120

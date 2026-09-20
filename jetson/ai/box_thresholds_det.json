@@ -1,0 +1,13 @@
+{
+  "umbral": 0.5,
+  "recall_velutina": 0.31932773109243695,
+  "fp_duros": 1,
+  "fp_per_image": 0.005050505050505051,
+  "mAP50": 0.84085,
+  "mAP50_95": 0.59179,
+  "precision": 0.8421,
+  "recall": 0.73276,
+  "n_val_images": 297,
+  "n_gt_velutina": 119,
+  "fecha": "2026-09-17T21:23:43.268622"
+}

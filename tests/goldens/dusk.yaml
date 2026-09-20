@@ -1,0 +1,7 @@
+# Golden: dusk variant (V-15, S-10; velutina V25/S110 still pass, bee still fails).
+name: dusk
+seed: 11
+counts: {total: 12, bee: 6, velutina: 6}
+perturb: {dV: -15.0, dS: -10.0}
+accept: {velutina_promoted: true, bee_promoted: false}
+replay: sim/ros2/bag_replay.py::replay_scenario('dusk', seed=11)

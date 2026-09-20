@@ -1,0 +1,18 @@
+{
+  "n_cajas": 372,
+  "fecha": "2026-09-17T18:41:40.174988Z",
+  "v1": {
+    "umbral": null,
+    "recall": 0.0,
+    "fp": null,
+    "n": 372,
+    "n_velutina": 0
+  },
+  "v2": {
+    "umbral": 0.999,
+    "recall": 0.0,
+    "fp": 0,
+    "n": 372,
+    "n_velutina": 119
+  }
+}

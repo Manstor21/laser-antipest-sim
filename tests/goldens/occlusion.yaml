@@ -1,0 +1,7 @@
+# Golden: occlusion variant (2-frame lidar dropout mid-track, EKF coasts).
+name: occlusion
+seed: 11
+counts: {total: 12, bee: 6, velutina: 6}
+perturb: {drop_frames: 2, drop_at: 1}
+accept: {velutina_promoted: true, bee_promoted: false}
+replay: sim/ros2/bag_replay.py::replay_scenario('occlusion', seed=11)

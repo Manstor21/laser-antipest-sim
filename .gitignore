@@ -1,0 +1,31 @@
+# Datos y pesos gordos - no se suben (cientos de MB)
+data/
+DESCARGAS/
+runs/
+*.pt
+*.onnx
+*.engine
+*.weights
+
+# Cachés y temporales
+__pycache__/
+*.pyc
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.venv/
+venv/
+*.tmp
+*.log
+
+# Sistema y editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# Kaggle / Colab
+kaggle.json
+.atl/

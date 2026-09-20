@@ -1,0 +1,28 @@
+# Sim-only extrinsic calibration (Gazebo fiducials, no real checkerboard).
+# Reprojection target: RMSE <= 2 px at 2 m. Sync target: RMS <= 1 ms.
+camera:
+  model: pinhole
+  width: 640
+  height: 480
+  # fx, fy, cx, cy flattened row-major 3x3
+  K:
+    - [600.0, 0.0, 320.0]
+    - [0.0, 600.0, 240.0]
+    - [0.0, 0.0, 1.0]
+  dist: [0.0, 0.0, 0.0, 0.0]
+extrinsic:
+  # Sim camera at origin looking +Z; R identity, t zero.
+  R:
+    - [1.0, 0.0, 0.0]
+    - [0.0, 1.0, 0.0]
+    - [0.0, 0.0, 1.0]
+  t: [0.0, 0.0, 0.0]
+fiducials:
+  - {id: 0, xyz: [0.0, 0.0, 2.0]}
+  - {id: 1, xyz: [0.1, -0.05, 2.0]}
+  - {id: 2, xyz: [-0.1, 0.05, 2.0]}
+  - {id: 3, xyz: [0.05, 0.1, 2.0]}
+sync:
+  source: ros2_sim_time
+  rms_max_ms: 1.0
+  bag_seconds: 60

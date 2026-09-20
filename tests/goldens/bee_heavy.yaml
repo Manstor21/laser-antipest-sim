@@ -1,0 +1,14 @@
+# Golden: bee-heavy precision set (sim-only, 0 euro).
+# 100 cases, 80% bees, variants nominal/dusk/glare/rain rotating.
+# Gate: precision >= 0.95, zero bees promoted (doubt->bee).
+name: bee_heavy
+seed: 7
+counts: {total: 100, bee: 80, velutina: 20}
+variants: [nominal, dusk, glare, rain]
+frames_per_case: 5
+trajectory: {speed_ms: 5.0, depth_m: 3.0, xs_m: [0.5, 1.0, 1.5, 2.0, 2.5]}
+features:
+  velutina: {longest_axis_mm: 30.0, thorax_v: 40.0, band_h: 30.0, band_s: 120.0, wingspan: 40.0, body: 20.0, sideband_hz: 130.0}
+  bee: {longest_axis_mm: 12.5, thorax_v: 150.0, band_h: 30.0, band_s: 40.0, wingspan: 20.0, body: 20.0, sideband_hz: 60.0}
+accept: {precision_min: 0.95, bees_promoted_max: 0}
+replay: sim/ros2/bag_replay.py::replay_scenario('bee_heavy', seed=7)
