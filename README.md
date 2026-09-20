@@ -42,7 +42,7 @@ El estado actual es **sim-only**: todos los sensores, actuadores y enlaces se ej
 │  LiDAR 3D         │────▶│  seguimiento      │────▶│  YOLOv8           │────▶│  actuación sim.   │
 │  Radar FMCW       │     │  EKF 9-DOF        │     │  voto 3/3         │     │  control + inter. │
 │  Cámara 320px     │     │  predicción 50ms  │     │  calibración      │     │  galvo simulado   │
-└───────────────────┘     └─────────┬─────────┘     └─────────┬─────────┘     └─────────┬─────────┘
+└───────────────────┘     └───────────────────┘     └───────────────────┘     └───────────────────┘
                                   │                       │                       │
                                   └───────────┬───────────┘                       │
                                               ▼                                   ▼
