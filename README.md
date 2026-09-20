@@ -37,17 +37,21 @@ El estado actual es **sim-only**: todos los sensores, actuadores y enlaces se ej
 ## Arquitectura
 
 ```
-Sensores sintetizados          Fusión y seguimiento         Clasificación            Decisión y actuación simulada
-┌─────────────────┐           ┌──────────────────┐        ┌──────────────┐         ┌─────────────────────┐
-│ LiDAR 3D        │─────┐     │ EKF 9-DOF        │        │ YOLOv8       │         │ Control de disparo  │
-│ Radar FMCW      │─────┼────▶│ + predicción 50ms│───────▶│ + voto 3/3   │────────▶│ + interlocks        │
-│ Cámara 320px    │─────┘     │ + ROI dinámico   │        │ + calibración│         │ + galvo simulado    │
-└─────────────────┘           └──────────────────┘        └──────────────┘         └─────────────────────┘
-                                      │                          │                           │
-                                      └──────────┬───────────────┘                           │
-                                                 ▼                                           ▼
-                                          Telemetría MQTT sim                        App / panel
-                                          + OTA con rollback                         + logs JSONL
+┌─────────────────┐       ┌──────────────────┐       ┌────────────────┐       ┌─────────────────────┐
+│ Sensores        │       │ Fusión y         │       │ Clasificación  │       │ Decisión y          │
+│  LiDAR 3D       │──────▶│  seguimiento     │──────▶│  YOLOv8        │──────▶│  actuación simulada │
+│  Radar FMCW     │       │  EKF 9-DOF       │       │  voto 3/3      │       │  control + interlocks│
+│  Cámara 320px   │       │  predicción 50ms │       │  calibración   │       │  galvo simulado     │
+│                 │       │  ROI dinámico    │       │                │       │                     │
+└─────────────────┘       └────────┬─────────┘       └────────┬───────┘       └──────────┬──────────┘
+                                 │                        │                         │
+                                 └────────────┬───────────┘                         │
+                                              ▼                                     ▼
+                                   ┌───────────────────┐                  ┌──────────────────┐
+                                   │ Telemetría        │                  │ App / panel      │
+                                   │ MQTT sim          │                  │ + logs JSONL     │
+                                   │ OTA con rollback  │                  │                  │
+                                   └───────────────────┘                  └──────────────────┘
 ```
 
 Principios de diseño:
