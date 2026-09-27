@@ -1,4 +1,4 @@
-# Datos y pesos gordos - no se suben (cientos de MB)
+# Datos y pesos grandes - excluidos del control de versiones
 data/
 DESCARGAS/
 runs/
