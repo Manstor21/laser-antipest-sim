@@ -7,12 +7,19 @@ Goldens reutilizan `detector.predict+metrics.iou` (valores precomputados
 en meta). 0EUR: sin binarios, sin GPU, sin subprocess, sin writes fuera
 de memoria. Sim-time `t` explícito float.
 
+Seguridad: `meta` debe incluir `sha256` (hash del archivo .onnx).
+Fase de migración: si `sha256` no está presente, se loguea WARNING pero
+no se bloquea. Tests deben requerir `sha256`.
+
 Contratos:
   OtaSim(current="v1").promote(ver, meta, t) -> bool
   OtaSim.rollback(t) -> str (current tras rollback a N-1)
 Meta: {"opset": 12, "goldens": {"rain","glare","occlusion"},
-  optional "onnx_path": str}
+  optional "onnx_path": str, "sha256": str}
 """
+
+import hashlib
+import logging
 
 SIMULATED = True
 
@@ -32,7 +39,7 @@ class OtaSim:
         self._good = str(current)  # última versión estable (green gate)
 
     # -- gates ---------------------------------------------------------
-    def _check_meta(self, meta: dict) -> tuple:
+    def _check_meta(self, meta: dict, onnx_path: str | None = None) -> tuple:
         if not isinstance(meta, dict):
             return (False, "meta must be dict")
         if int(meta.get("opset", -1)) != OPSET_REQUIRED:
@@ -53,6 +60,34 @@ class OtaSim:
                         f"(occlusion)" if name == "occlusion"
                         else f"golden {name} IoU {score:.3f} < "
                         f"{IOU_MIN:.2f}")
+        # SHA-256 verification of the ONNX artifact
+        sha256_expected = meta.get("sha256")
+        onnx_path = onnx_path or meta.get("onnx_path")
+        if sha256_expected is not None and onnx_path is not None:
+            try:
+                actual_hash = self._compute_sha256(onnx_path)
+                if actual_hash.lower() != sha256_expected.lower():
+                    return (False,
+                            f"sha256 mismatch: expected {sha256_expected}, got {actual_hash}")
+            except Exception as e:
+                return (False, f"sha256 verification failed: {e}")
+        elif sha256_expected is not None and onnx_path is None:
+            return (False, "sha256 provided but onnx_path missing")
+        elif sha256_expected is None and onnx_path is not None:
+            # Migration phase: warn but don't block
+            logging.warning(
+                "OTA promote: onnx_path provided without sha256 in meta. "
+                "This will be required in future versions. "
+                "Add 'sha256' to meta with the SHA-256 hash of the .onnx file."
+            )
+        # ed25519 signature verification (optional, future extension)
+        ed25519_sig = meta.get("ed25519_sig")
+        public_key = meta.get("public_key")
+        if ed25519_sig is not None or public_key is not None:
+            if ed25519_sig is None or public_key is None:
+                return (False, "ed25519_sig and public_key must both be present if either is provided")
+            # Placeholder for future Ed25519 verification
+            logging.info("Ed25519 signature verification not yet implemented; skipping")
         onnx_path = meta.get("onnx_path")
         if onnx_path is not None:
             try:
@@ -62,12 +97,21 @@ class OtaSim:
                 return (False, f"onnx check failed: {e}")
         return (True, "ok")
 
+    def _compute_sha256(self, filepath: str) -> str:
+        """Compute SHA-256 hash of a file."""
+        h = hashlib.sha256()
+        with open(filepath, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                h.update(chunk)
+        return h.hexdigest()
+
     # -- ops -----------------------------------------------------------
     def promote(self, ver: str, meta: dict, t: float = 0.0) -> bool:
         """Promociona versión si gate green; si no, reject+log (bool)."""
         t = float(t)
         ver = str(ver)
-        ok, reason = self._check_meta(meta)
+        onnx_path = meta.get("onnx_path")
+        ok, reason = self._check_meta(meta, onnx_path=onnx_path)
         if not ok:
             self.rejected[ver] = {"reason": reason, "t": t}
             self.log.append({"ver": ver, "t": t, "result": "rejected",

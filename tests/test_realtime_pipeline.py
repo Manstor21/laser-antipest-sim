@@ -13,7 +13,10 @@ def _promoted_out():
 def test_split_t_fire_gt_authorize():
     from jetson.laser.fire_pipeline import FirePipeline
 
-    pipe = FirePipeline()
+    pipe = FirePipeline(
+        laser_cfg={"laser": {"enabled": True, "simulated": True}},
+        explicit_config=True,
+    )
     msg = pipe.jetson_step(
         {"promoted": True, "ai_vote": True,
          "gates": {"R1": True, "R2": True, "R3": True, "R4": True}},
@@ -30,7 +33,10 @@ def test_split_t_fire_gt_authorize():
 def test_split_hw_veto_cancels_fsm():
     from jetson.laser.fire_pipeline import FirePipeline
 
-    pipe = FirePipeline()
+    pipe = FirePipeline(
+        laser_cfg={"laser": {"enabled": True, "simulated": True}},
+        explicit_config=True,
+    )
     msg = pipe.jetson_step(_promoted_out(), target_xyz=(0.05, -0.03, 3.0), t=2.0)
     assert msg["authorized"] is True
     veto = HwInputs(enable_sw=True, r6_hw=True,
@@ -45,7 +51,10 @@ def test_split_hw_veto_cancels_fsm():
 def test_cycle_wrapper_keeps_compat_shape():
     from jetson.laser.fire_pipeline import FirePipeline
 
-    pipe = FirePipeline()
+    pipe = FirePipeline(
+        laser_cfg={"laser": {"enabled": True, "simulated": True}},
+        explicit_config=True,
+    )
     res = pipe.cycle(
         fusion_out=_promoted_out(), target_xyz=(0.05, -0.03, 3.0), t=3.0,
     )

@@ -14,7 +14,10 @@ def _promoted_out():
 
 
 def test_wire_happy_path_settle_then_shot_logged():
-    pipe = FirePipeline()
+    pipe = FirePipeline(
+        laser_cfg={"laser": {"enabled": True, "simulated": True}},
+        explicit_config=True,
+    )
     out = _promoted_out()
     # EKF x9+50ms target near field centre (z=3m sim)
     res = pipe.cycle(
@@ -40,7 +43,10 @@ def test_wire_happy_path_settle_then_shot_logged():
 
 
 def test_wire_tracking_abort_15mm_goes_safe():
-    pipe = FirePipeline()
+    pipe = FirePipeline(
+        laser_cfg={"laser": {"enabled": True, "simulated": True}},
+        explicit_config=True,
+    )
     out = _promoted_out()
     # prime near centre first so galvo sits near (0,0)
     pipe.cycle(
@@ -78,7 +84,10 @@ def test_wire_tracking_abort_15mm_goes_safe():
 
 
 def test_wire_denied_gate_never_arms():
-    pipe = FirePipeline()
+    pipe = FirePipeline(
+        laser_cfg={"laser": {"enabled": True, "simulated": True}},
+        explicit_config=True,
+    )
     out = _promoted_out()
     out["gates"]["R1"] = False
     res = pipe.cycle(

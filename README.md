@@ -8,7 +8,7 @@
 [![SciPy](https://img.shields.io/badge/SciPy-signal_processing-8CAAE6)](https://scipy.org/)
 [![scikit-learn](https://img.shields.io/badge/scikit_learn-ML-F7931E)](https://scikit-learn.org/)
 [![MQTT](https://img.shields.io/badge/MQTT-telemetry-660066)](https://mqtt.org/)
-[![pytest](https://img.shields.io/badge/pytest-259_tests-0A9EDC)](https://pytest.org/)
+[![pytest](https://img.shields.io/badge/pytest-automated_tests-0A9EDC)](https://pytest.org/)
 
 Sistema de detección y clasificación de plagas voladoras basado en fusión multisensor y visión por computador. Simulación completa, sin hardware dedicado, orientado a la protección de colmenares frente a *Vespa velutina* y adaptable a otras especies.
 
@@ -113,7 +113,7 @@ Principios de diseño:
 - Detección y seguimiento en escenarios sintéticos con métricas por condición.
 - Clasificación con modelos de referencia y modelos entrenados con datos reales (GBIF/Hornet3000).
 - Evaluación de selectividad y balance de enlace mediante ensayos reproducibles.
-- Conjunto de verificación de 259 pruebas automatizadas.
+- Conjunto de verificación de pruebas automatizadas.
 
 Limitaciones conocidas:
 
@@ -189,7 +189,7 @@ Configuración de aviso sin actuación, basada en Raspberry Pi 5, cámara y caja
 
 ## Verificación y calidad
 
-- 259 pruebas automatizadas. Ejecución: `python -m pytest tests -q`.
+- Pruebas automatizadas. Ejecución: `python -m pytest tests -q`.
 - Verificación por bloques con informes de cumplimiento de requisitos y escenarios.
 - Ensayos deterministas por semilla y por condición (lluvia, oclusión, deslumbramiento, penumbra).
 
