@@ -6,7 +6,7 @@
 [![OpenCV](https://img.shields.io/badge/OpenCV-computer_vision-5C3EE8)](https://opencv.org/)
 [![NumPy](https://img.shields.io/badge/NumPy-numerical-013243)](https://numpy.org/)
 [![SciPy](https://img.shields.io/badge/SciPy-signal_processing-8CAAE6)](https://scipy.org/)
-[![scikit-learn](https://img.shields.io/badge/scikit-learn-ML-F7931E)](https://scikit-learn.org/)
+[![scikit-learn](https://img.shields.io/badge/scikit_learn-ML-F7931E)](https://scikit-learn.org/)
 [![MQTT](https://img.shields.io/badge/MQTT-telemetry-660066)](https://mqtt.org/)
 [![pytest](https://img.shields.io/badge/pytest-259_tests-0A9EDC)](https://pytest.org/)
 
