@@ -3,6 +3,10 @@
 Uso:
     python sim/dataset/fetch_gbif.py [--base data/real] [--velutina 150] [--abeja 150] [--crabro 80]
     python sim/dataset/fetch_gbif.py --help
+    python sim/dataset/fetch_gbif.py --offline   # No network calls, uses cached data only
+
+Variables de entorno:
+    LASER_OFFLINE=1  # Deshabilita todas las llamadas de red (equivalente a --offline)
 
 Especies por defecto:
     Vespa velutina  -> 150 imgs -> data/real/gbif_velutina/
@@ -18,7 +22,7 @@ Filtros:
       (acepta by, by-nc, by-sa, by-nc-sa) o CC0/publicdomain. Rechaza registros
       sin licencia o con "all rights reserved".
 
-Descarga con 3 reintentos y timeout (curl.exe si existe, si no urllib).
+Descarga con 3 reintentos y timeout (httpx, sin subprocess/curl).
 Guarda como <taxonKey>_<photoId>.jpg. Omite las ya descargadas (re-ejecutable).
 Atribución en data/real/gbif_ATTRIBUTION.csv:
     fichero,especie,fotografo,licencia,url_foto,url_observacion
@@ -32,6 +36,12 @@ abierta (sin clave):
     https://api.inaturalist.org/v1/observations?taxon_name=<sp>&photos=true&quality_grade=research&per_page=200
 Solo fotos con license_code CC (cc-by, cc-by-nc, cc-by-sa, cc0...). Se documenta
 en consola y en el CSV (columna url_observacion apunta a inaturalist.org).
+
+Llamadas de red realizadas (desactivables con --offline / LASER_OFFLINE=1):
+    - GBIF API: occurrence/search (paginado, mediaType=StillImage)
+    - iNaturalist API: observations (fallback, quality_grade=research)
+    - HEAD requests para Content-Length antes de descargar
+    - GET requests para descargar archivos de imagen
 """
 
 from __future__ import annotations
@@ -39,13 +49,13 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-import shutil
-import subprocess
+import os
 import sys
 import time
 import urllib.parse
-import urllib.request
 from pathlib import Path
+
+import httpx
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_BASE = REPO_ROOT / "data" / "real"
@@ -63,10 +73,15 @@ MAX_FILES_DEFAULT = 500
 MAX_MB_DEFAULT = 600
 API_PAUSE = 0.3
 DL_PAUSE = 0.2
-API_TIMEOUT = 30
-DL_TIMEOUT = 60
+API_TIMEOUT = 30.0
+DL_TIMEOUT = 60.0
 
-CURL = shutil.which("curl.exe") or shutil.which("curl")
+HEADERS = {"User-Agent": "Velutina-sim/1.0 (diagnostico)"}
+
+
+def is_offline() -> bool:
+    """Check if offline mode is enabled via flag or environment variable."""
+    return os.environ.get("LASER_OFFLINE", "0") == "1"
 
 
 def is_open_license(lic: str | None) -> bool:
@@ -92,13 +107,13 @@ def is_inat_open_license(code: str | None) -> bool:
     return c.startswith("cc-") or c == "cc0"
 
 
-def http_get_json(url: str, timeout: int = API_TIMEOUT, retries: int = 3) -> dict | None:
+def http_get_json(client: httpx.Client, url: str, timeout: float = API_TIMEOUT, retries: int = 3) -> dict | None:
     last = None
     for attempt in range(retries):
         try:
-            req = urllib.request.Request(url, headers={"User-Agent": "Velutina-sim/1.0 (diagnostico)"})
-            with urllib.request.urlopen(req, timeout=timeout) as resp:
-                return json.loads(resp.read().decode("utf-8", "replace"))
+            resp = client.get(url, timeout=timeout)
+            resp.raise_for_status()
+            return resp.json()
         except Exception as exc:  # noqa: BLE001 - registra y sigue
             last = exc
             print(f"Aviso: API fallo intento {attempt + 1}/3 {url[:120]}... ({exc})", file=sys.stderr)
@@ -107,58 +122,37 @@ def http_get_json(url: str, timeout: int = API_TIMEOUT, retries: int = 3) -> dic
     return None
 
 
-def head_content_length(url: str, timeout: int = 20) -> int | None:
-    """Tamaño en bytes vía HEAD (curl -sI o urllib). None si desconocido."""
+def head_content_length(client: httpx.Client, url: str, timeout: float = 20.0) -> int | None:
+    """Tamaño en bytes vía HEAD (httpx). None si desconocido."""
     try:
-        if CURL:
-            out = subprocess.run(
-                [CURL, "-sI", "-L", "--max-time", str(timeout), url],
-                capture_output=True, text=True, timeout=timeout + 5,
-            )
-            for line in (out.stdout or "").splitlines():
-                if line.lower().startswith("content-length:"):
-                    try:
-                        return int(line.split(":", 1)[1].strip())
-                    except ValueError:
-                        return None
-            return None
-        req = urllib.request.Request(url, method="HEAD", headers={"User-Agent": "Velutina-sim/1.0"})
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            cl = resp.headers.get("Content-Length")
-            return int(cl) if cl else None
+        resp = client.head(url, timeout=timeout, follow_redirects=True)
+        resp.raise_for_status()
+        cl = resp.headers.get("Content-Length")
+        return int(cl) if cl else None
     except Exception:
         return None
 
 
-def download_url(url: str, dest: Path, timeout: int = DL_TIMEOUT, retries: int = 3) -> tuple[bool, str]:
+def download_url(client: httpx.Client, url: str, dest: Path, timeout: float = DL_TIMEOUT, retries: int = 3) -> tuple[bool, str]:
     """Descarga con 3 reintentos. Devuelve (ok, mensaje)."""
     for attempt in range(retries):
         try:
-            if CURL:
-                dest.parent.mkdir(parents=True, exist_ok=True)
-                tmp = dest.with_suffix(".part")
-                r = subprocess.run(
-                    [CURL, "-sS", "-L", "--fail", "--connect-timeout", "15",
-                     "--max-time", str(timeout), "-o", str(tmp), url],
-                    capture_output=True, text=True, timeout=timeout + 10,
-                )
-                if r.returncode == 0 and tmp.exists() and tmp.stat().st_size > 0:
-                    tmp.replace(dest)
-                    return True, "ok curl"
-                try:
-                    if tmp.exists():
-                        tmp.unlink()
-                except OSError:
-                    pass
-                msg = (r.stderr or "").strip()[-200:] or f"curl rc={r.returncode}"
-                print(f"Aviso: descarga intento {attempt + 1}/3 {url[:100]}... ({msg})", file=sys.stderr)
-            else:
-                req = urllib.request.Request(url, headers={"User-Agent": "Velutina-sim/1.0"})
-                with urllib.request.urlopen(req, timeout=timeout) as resp, open(dest, "wb") as fh:
-                    shutil.copyfileobj(resp, fh)
-                if dest.stat().st_size > 0:
-                    return True, "ok urllib"
-                print(f"Aviso: descarga vacía intento {attempt + 1}/3 {url[:100]}...", file=sys.stderr)
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            tmp = dest.with_suffix(".part")
+            with client.stream("GET", url, timeout=timeout, follow_redirects=True) as resp:
+                resp.raise_for_status()
+                with open(tmp, "wb") as fh:
+                    for chunk in resp.iter_bytes(chunk_size=8192):
+                        fh.write(chunk)
+            if tmp.exists() and tmp.stat().st_size > 0:
+                tmp.replace(dest)
+                return True, "ok httpx"
+            try:
+                if tmp.exists():
+                    tmp.unlink()
+            except OSError:
+                pass
+            print(f"Aviso: descarga vacía intento {attempt + 1}/3 {url[:100]}...", file=sys.stderr)
         except Exception as exc:  # noqa: BLE001
             print(f"Aviso: descarga intento {attempt + 1}/3 {url[:100]}... ({exc})", file=sys.stderr)
         time.sleep(1.0)
@@ -183,8 +177,11 @@ def pick_gbif_media(rec: dict) -> str | None:
     return None
 
 
-def gbif_candidates(scientific_name: str, quota: int) -> list[dict]:
+def gbif_candidates(client: httpx.Client, scientific_name: str, quota: int) -> list[dict]:
     """Pagina GBIF (limit=300) hasta reunir `quota` candidatos filtrados."""
+    if is_offline():
+        print(f"Modo offline: omitiendo GBIF para {scientific_name}", file=sys.stderr)
+        return []
     cands: list[dict] = []
     offset = 0
     seen_urls: set[str] = set()
@@ -197,7 +194,7 @@ def gbif_candidates(scientific_name: str, quota: int) -> list[dict]:
             "offset": offset,
         })
         url = f"{GBIF_SEARCH}?{q}"
-        data = http_get_json(url)
+        data = http_get_json(client, url)
         time.sleep(API_PAUSE)
         pages += 1
         if not data:
@@ -233,8 +230,11 @@ def gbif_candidates(scientific_name: str, quota: int) -> list[dict]:
     return cands[:quota]
 
 
-def inat_candidates(scientific_name: str, quota: int) -> list[dict]:
+def inat_candidates(client: httpx.Client, scientific_name: str, quota: int) -> list[dict]:
     """Fallback iNaturalist: observaciones research-grade con fotos CC."""
+    if is_offline():
+        print(f"Modo offline: omitiendo iNaturalist para {scientific_name}", file=sys.stderr)
+        return []
     cands: list[dict] = []
     seen: set[str] = set()
     page = 1
@@ -247,7 +247,7 @@ def inat_candidates(scientific_name: str, quota: int) -> list[dict]:
             "page": page,
             "order_by": "votes",
         })
-        data = http_get_json(f"{INAT_OBS}?{q}")
+        data = http_get_json(client, f"{INAT_OBS}?{q}")
         time.sleep(API_PAUSE)
         page += 1
         if not data:
@@ -306,18 +306,18 @@ def current_totals(base: Path) -> tuple[int, int]:
     return len(files), total
 
 
-def fetch_species(spec: dict, base: Path, attrib: dict[str, dict],
+def fetch_species(client: httpx.Client, spec: dict, base: Path, attrib: dict[str, dict],
                   max_files: int, max_bytes: int) -> tuple[int, int, int, bool]:
     """Descarga una especie. Devuelve (nuevas, omitidas, fallos, uso_fallback)."""
     outdir = base / spec["dirname"]
     outdir.mkdir(parents=True, exist_ok=True)
     print(f"== {spec['scientificName']} -> {outdir} (objetivo {spec['quota']}) ==")
-    cands = gbif_candidates(spec["scientificName"], spec["quota"])
+    cands = gbif_candidates(client, spec["scientificName"], spec["quota"])
     used_fallback = False
     if len(cands) < 30:
         print(f"Aviso: GBIF dio {len(cands)} candidatos (<30) para {spec['scientificName']}; "
               f"probando fallback iNaturalist (documentado).")
-        inat = inat_candidates(spec["scientificName"], spec["quota"])
+        inat = inat_candidates(client, spec["scientificName"], spec["quota"])
         print(f"Fallback iNaturalist: {len(inat)} candidatos para {spec['scientificName']}.")
         # Fusiona sin duplicar URLs
         urls = {c["url_foto"] for c in cands}
@@ -341,12 +341,12 @@ def fetch_species(spec: dict, base: Path, attrib: dict[str, dict],
         if n_files >= max_files:
             print(f"Aviso: límite de seguridad {max_files} ficheros alcanzado, se para.", file=sys.stderr)
             break
-        size = head_content_length(c["url_foto"])
+        size = head_content_length(client, c["url_foto"])
         if size and n_bytes + size > max_bytes:
             print(f"Aviso: límite de seguridad {max_bytes / 1e6:.0f}MB alcanzado "
                   f"({n_bytes / 1e6:.1f}MB + {size / 1e6:.1f}MB), se para.", file=sys.stderr)
             break
-        ok, msg = download_url(c["url_foto"], dest)
+        ok, msg = download_url(client, c["url_foto"], dest)
         time.sleep(DL_PAUSE)
         if ok:
             nuevas += 1
@@ -369,7 +369,16 @@ def main(argv=None) -> int:
     ap.add_argument("--crabro", type=int, default=80)
     ap.add_argument("--max-files", type=int, default=MAX_FILES_DEFAULT)
     ap.add_argument("--max-mb", type=int, default=MAX_MB_DEFAULT)
+    ap.add_argument("--offline", action="store_true", help="Deshabilita todas las llamadas de red (usa solo datos en caché)")
     args = ap.parse_args(argv)
+
+    # Set offline mode from flag
+    if args.offline:
+        os.environ["LASER_OFFLINE"] = "1"
+
+    if is_offline():
+        print("Modo OFFLINE activado (--offline o LASER_OFFLINE=1). No se harán llamadas de red.", file=sys.stderr)
+
     base = Path(args.base)
     base.mkdir(parents=True, exist_ok=True)
     specs = [
@@ -382,10 +391,14 @@ def main(argv=None) -> int:
     max_bytes = int(args.max_mb * 1_000_000)
     total_new = 0
     any_fallback = False
-    for spec in specs:
-        nuevas, _omit, _fail, fb = fetch_species(spec, base, attrib, args.max_files, max_bytes)
-        total_new += nuevas
-        any_fallback = any_fallback or fb
+
+    # Create httpx client with connection pooling
+    with httpx.Client(headers=HEADERS, timeout=httpx.Timeout(API_TIMEOUT, connect=10.0)) as client:
+        for spec in specs:
+            nuevas, _omit, _fail, fb = fetch_species(client, spec, base, attrib, args.max_files, max_bytes)
+            total_new += nuevas
+            any_fallback = any_fallback or fb
+
     with open(csv_path, "w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=["fichero", "especie", "fotografo", "licencia", "url_foto", "url_observacion"])
         w.writeheader()

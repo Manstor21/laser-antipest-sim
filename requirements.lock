@@ -1,0 +1,22 @@
+# Laser AntiPest Sim - Pinned Dependencies for pip-audit
+# Only direct dependencies from requirements.txt
+
+numpy==2.5.0
+scipy==1.18.0
+pandas==2.3.3
+opencv-python==4.13.0.92
+ultralytics==8.4.154
+scikit-learn==1.9.1
+torch==2.14.0
+torchvision==0.29.0
+pyyaml==6.0.3
+matplotlib==3.11.2
+pillow==12.3.0
+requests==2.34.2
+httpx==0.28.1
+urllib3==2.8.0
+pytest==9.1.1
+pytest-asyncio==0.23.3
+onnx==1.23.1
+onnxruntime==1.30.0
+tqdm==4.67.3

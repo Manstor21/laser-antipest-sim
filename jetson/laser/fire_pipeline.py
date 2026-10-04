@@ -2,8 +2,9 @@
 
 Composition-only: consumes FusionPipeline outputs via fire_authorize(),
 never mutates step()/step_with_ai(). Any abort/fault forces FSM SAFE.
-Default harness is SIMULATED-enabled; production must pass config.yaml
-(which defaults laser.enabled=false).
+Default is fail-closed: laser.enabled=False. Tests must pass explicit
+laser_cfg with enabled=True. Production passes config.yaml where
+laser.enabled=false unless explicitly enabled with safety review.
 
 Realtime split (PR2): jetson_step(t) -> LinkSim -> mcu_step(t_fire).
 cycle() kept as compat wrapper delegating to the 3 stages. Explicit
@@ -11,6 +12,7 @@ sim-time t everywhere, no sleep/time.time in core.
 """
 
 import argparse
+import logging
 import sys
 from pathlib import Path
 
@@ -40,7 +42,7 @@ class FirePipeline:
 
     def __init__(self, K=None, R=None, t=None, galvo=None,
                  shutter=None, controller=None, laser_cfg=None,
-                 link=None, hw=None, mcu=None):
+                 link=None, hw=None, mcu=None, explicit_config=False):
         self.K = K
         self.R = R
         self.t = t
@@ -48,10 +50,20 @@ class FirePipeline:
         self.shutter = shutter if shutter is not None else ShutterSim()
         self.controller = controller if controller is not None else FireController()
         if laser_cfg is None:
-            # SIMULATED harness default: explicitly enabled for tests.
-            # Production passes config.yaml where laser.enabled=false.
-            laser_cfg = {"laser": {"enabled": True, "simulated": True}}
+            # Fail-closed default: laser disabled unless explicitly configured.
+            # Tests that need the laser must pass laser_cfg with enabled=True.
+            laser_cfg = {"laser": {"enabled": False, "simulated": True}}
         self.laser_cfg = laser_cfg
+        # Fail-closed validation: if laser.enabled=True but no explicit config
+        # was provided (e.g. from config.yaml), log WARNING and treat as disabled.
+        laser_on = laser_cfg.get("laser", {}).get("enabled", False)
+        if laser_on and not explicit_config:
+            logging.warning(
+                "FirePipeline: laser.enabled=True but no explicit config provided. "
+                "Fail-closed: treating as disabled. Pass explicit_config=True or "
+                "load from config.yaml to enable."
+            )
+            self.laser_cfg = {"laser": {"enabled": False, "simulated": True}}
         # DI defaults: link=LinkSim UART115200/FIFO16/seed42, hw=HwInterlock
         # pass-through when inputs clear, mcu=None (optional VirtualMcu tick).
         # Open Q: SPI vs UART default; FIFO 16 vs 32 under EKF 10Hz burst.
@@ -271,7 +283,11 @@ def main():
     ap.add_argument("--sim-step", action="store_true")
     args = ap.parse_args()
     if args.sim_step:
-        pipe = FirePipeline()
+        # Test harness: explicitly pass laser_cfg with enabled=True and explicit_config=True
+        pipe = FirePipeline(
+            laser_cfg={"laser": {"enabled": True, "simulated": True}},
+            explicit_config=True,
+        )
         res = pipe.cycle(
             fusion_out={"promoted": True, "ai_vote": True,
                         "gates": {"R1": True, "R2": True, "R3": True, "R4": True}},

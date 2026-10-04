@@ -60,17 +60,14 @@ Opciones: --dirs DIR [DIR ...]  --limit N por carpeta (defecto 200)
 
 
 def load_thresholds():
-    pv_min, pb_max = 0.995, 0.001
     try:
-        if yaml is not None and THRESHOLDS_PATH.exists():
-            with open(THRESHOLDS_PATH, "r", encoding="utf-8") as fh:
-                data = yaml.safe_load(fh)
-            if isinstance(data, dict):
-                pv_min = float(data.get("p_velutina_min", pv_min))
-                pb_max = float(data.get("p_bee_max", pb_max))
+        from jetson.ai.temporal import get_thresholds
+        thresholds = get_thresholds()
+        pv_min = float(thresholds.get("p_velutina_min", 0.995))
+        pb_max = float(thresholds.get("p_bee_max", 0.001))
+        return pv_min, pb_max
     except Exception:
-        pass
-    return pv_min, pb_max
+        return 0.995, 0.001
 
 
 def expects_promote_for_dir(dirname: str) -> tuple[bool, str]:

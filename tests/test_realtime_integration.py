@@ -18,7 +18,10 @@ def _promoted_out(t_meas=None, t_fire=None):
 def _run_cycle(t=10.0, fusion_out=None):
     from jetson.laser.fire_pipeline import FirePipeline
 
-    pipe = FirePipeline()
+    pipe = FirePipeline(
+        laser_cfg={"laser": {"enabled": True, "simulated": True}},
+        explicit_config=True,
+    )
     out = fusion_out if fusion_out is not None else _promoted_out()
     return pipe.cycle(
         fusion_out=out,
@@ -45,7 +48,10 @@ def test_double_run_split_stages_identical_link_delay():
     from jetson.laser.fire_pipeline import LINK_AUTH_BYTES, FirePipeline
 
     def _split(t=11.0):
-        pipe = FirePipeline()
+        pipe = FirePipeline(
+            laser_cfg={"laser": {"enabled": True, "simulated": True}},
+            explicit_config=True,
+        )
         msg = pipe.jetson_step(
             _promoted_out(), target_xyz=(0.05, -0.03, 3.0), t=t,
         )
@@ -74,7 +80,10 @@ def test_ekf_dt_uses_fire_minus_meas_double_run():
         if t_fire is None:
             from jetson.laser.fire_pipeline import FirePipeline
 
-            pipe = FirePipeline()
+            pipe = FirePipeline(
+                laser_cfg={"laser": {"enabled": True, "simulated": True}},
+                explicit_config=True,
+            )
             msg = pipe.jetson_step(
                 _promoted_out(t_meas=t_meas), target_xyz=(0.05, -0.03, 3.0),
                 t=t_meas,
